@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Buyer Dashboard – FarmConnect</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+/* Product card */
+.prod-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:18px; }
+.prod-card { background:white; border-radius:16px; overflow:hidden; box-shadow:var(--shadow); border:1px solid rgba(0,0,0,0.05); transition:all 0.28s; }
+.prod-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.prod-thumb { height:130px; background:linear-gradient(135deg,var(--sky),rgba(74,124,48,0.08)); display:flex; align-items:center; justify-content:center; font-size:60px; position:relative; }
+.prod-organic-badge { position:absolute; top:8px; right:8px; background:var(--leaf); color:white; font-size:10px; font-weight:700; padding:2px 8px; border-radius:50px; }
+.prod-direct-badge  { position:absolute; top:8px; left:8px; background:rgba(255,255,255,0.92); color:var(--earth); font-size:10px; font-weight:700; padding:2px 8px; border-radius:50px; }
+.prod-body { padding:14px; }
+.prod-name { font-weight:700; font-size:14px; }
+.prod-farmer { font-size:12px; color:var(--gray); margin-top:2px; }
+.prod-price { font-size:19px; font-weight:700; color:var(--leaf); margin:8px 0 2px; }
+.prod-unit  { font-size:12px; color:#aaa; }
+.prod-footer { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+.prod-stock { font-size:11px; color:#bbb; }
+.btn-add-cart { background:linear-gradient(135deg,var(--leaf),var(--earth)); color:white; border:none; padding:8px 14px; border-radius:9px; font-size:12px; font-weight:600; transition:all 0.2s; }
+.btn-add-cart:hover { transform:scale(1.05); }
+.rating-row { display:flex; align-items:center; gap:3px; font-size:11px; color:#f59e0b; margin-top:4px; }
+
+/* Cart */
+.cart-btn { position:relative; background:var(--sun); color:var(--dark); border:none; width:40px; height:40px; border-radius:50%; font-size:18px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 14px rgba(232,160,32,0.4); transition:transform 0.2s; }
+.cart-btn:hover { transform:scale(1.1); }
+.cart-count { position:absolute; top:-4px; right:-4px; width:18px; height:18px; background:var(--red); color:white; border-radius:50%; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+.cart-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+.cart-close { background:none; border:none; font-size:24px; cursor:pointer; color:var(--gray); }
+.cart-item { display:flex; align-items:center; gap:12px; padding:12px 0; border-bottom:1px solid var(--border); }
+.cart-item-emoji { font-size:30px; }
+.cart-item-info { flex:1; }
+.cart-item-name  { font-weight:600; font-size:14px; }
+.cart-item-price { font-size:12px; color:var(--leaf); font-weight:600; margin-top:2px; }
+.qty-ctrl { display:flex; align-items:center; gap:7px; }
+.qty-btn { width:26px; height:26px; border:2px solid var(--leaf); background:white; border-radius:6px; font-weight:700; color:var(--leaf); display:flex; align-items:center; justify-content:center; }
+.qty-n { font-weight:700; font-size:14px; width:22px; text-align:center; }
+.cart-totals { margin-top:auto; padding-top:16px; border-top:2px solid var(--border); }
+.tot-row { display:flex; justify-content:space-between; font-size:14px; color:var(--gray); margin-bottom:7px; }
+.tot-grand { display:flex; justify-content:space-between; font-size:18px; font-weight:700; color:var(--earth); margin-bottom:16px; }
+.del-pick { border:2px solid var(--border); border-radius:11px; padding:12px; margin-bottom:9px; cursor:pointer; transition:all 0.2s; background:white; }
+.del-pick:hover,.del-pick.sel { border-color:var(--leaf); background:rgba(74,124,48,0.04); }
+.del-pick-row { display:flex; align-items:center; gap:10px; }
+.del-pick-fee { font-weight:700; color:var(--leaf); font-size:14px; margin-left:auto; }
+
+/* Order card */
+.order-card { background:white; border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:12px; }
+.order-card-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.order-items-chips { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; }
+.order-chip { background:var(--bg); border-radius:7px; padding:4px 10px; font-size:12px; font-weight:500; }
+.order-card-ftr { display:flex; justify-content:space-between; align-items:center; }
+</style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a class="nav-brand" href="../index.html">
+    <span class="nav-brand-icon">🌾</span>
+    <div class="nav-brand-name">Farm<span>Connect</span></div>
+  </a>
+  <div class="nav-right">
+    <div class="user-chip" id="userChip"></div>
+    <button class="cart-btn" onclick="toggleCart()">
+      🛒<span class="cart-count" id="cartCount">0</span>
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-lbl">Shop</div>
+      <div class="sidebar-link active" data-sec="shop" onclick="nav(this,'shop')"><span class="s-icon">🌽</span> Browse Products</div>
+      <div class="sidebar-link" data-sec="orders" onclick="nav(this,'orders')"><span class="s-icon">📦</span> My Orders</div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-lbl">Account</div>
+      <div class="sidebar-link" data-sec="profile" onclick="nav(this,'profile')"><span class="s-icon">👤</span> My Profile</div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- SHOP -->
+    <section id="sec-shop">
+      <div class="page-header">
+        <div class="page-title">Farm Fresh Marketplace 🌾</div>
+        <div class="page-sub">Prices set directly by farmers — zero middlemen, maximum freshness.</div>
+      </div>
+
+      <div class="card" style="margin-bottom:18px;">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <input class="form-control" id="searchInput" style="flex:1;min-width:200px;" placeholder="🔍 Search tomatoes, mangoes, wheat…" oninput="filterProducts()">
+          <select class="form-control form-select" id="sortSelect" style="width:200px;" onchange="filterProducts()">
+            <option value="">Sort: Default</option>
+            <option value="price-asc">Price: Low → High</option>
+            <option value="price-desc">Price: High → Low</option>
+            <option value="organic">Organic First</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <span class="chip active" onclick="filterCat('all',this)">All</span>
+          <span class="chip" onclick="filterCat('Vegetables',this)">🥦 Vegetables</span>
+          <span class="chip" onclick="filterCat('Fruits',this)">🍎 Fruits</span>
+          <span class="chip" onclick="filterCat('Grains',this)">🌾 Grains</span>
+          <span class="chip" onclick="filterCat('Dairy',this)">🥛 Dairy</span>
+          <span class="chip" onclick="filterCat('Spices',this)">🌶️ Spices</span>
+          <span class="chip" onclick="filterCat('organic',this)">✅ Organic Only</span>
+        </div>
+      </div>
+
+      <div class="prod-grid" id="productGrid">
+        <div style="grid-column:1/-1;text-align:center;color:var(--gray);padding:40px;">Loading products…</div>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="sec-orders" style="display:none;">
+      <div class="page-header">
+        <div class="page-title">My Orders</div>
+        <div class="page-sub">All your direct farm purchases.</div>
+      </div>
+      <div class="stats-grid">
+        <div class="stat-card c-green"><div class="stat-icon">📦</div><div class="stat-val" id="ord-total">—</div><div class="stat-lbl">Total Orders</div></div>
+        <div class="stat-card c-blue"><div class="stat-icon">🚚</div><div class="stat-val" id="ord-transit">—</div><div class="stat-lbl">In Transit</div></div>
+        <div class="stat-card c-sun"><div class="stat-icon">✅</div><div class="stat-val" id="ord-done">—</div><div class="stat-lbl">Delivered</div></div>
+        <div class="stat-card c-red"><div class="stat-icon">💰</div><div class="stat-val" id="ord-spent">—</div><div class="stat-lbl">Total Spent</div></div>
+      </div>
+      <div id="orderCards"><div style="text-align:center;color:var(--gray);padding:40px;">Loading…</div></div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="sec-profile" style="display:none;">
+      <div class="page-header"><div class="page-title">My Profile</div></div>
+      <div class="card" style="max-width:500px;">
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-control" id="profName"></div>
+        <div class="form-group"><label class="form-label">Email</label><input class="form-control" id="profEmail" type="email"></div>
+        <div class="form-group"><label class="form-label">Buyer Type</label>
+          <select class="form-control form-select" id="profType">
+            <option>Individual / Family</option><option>Restaurant / Hotel</option>
+            <option>Grocery Store</option><option>Food Processing Unit</option><option>Bulk Purchaser</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="toast('✅ Profile saved!')">Save Changes</button>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- CART PANEL -->
+<div class="cart-overlay" id="cartOverlay" onclick="toggleCart()"></div>
+<div class="cart-panel" id="cartPanel">
+  <div class="cart-hdr">
+    <div style="font-family:'Playfair Display',serif;font-size:22px;color:var(--earth);">🛒 Your Cart</div>
+    <button class="cart-close" onclick="toggleCart()">✕</button>
+  </div>
+  <div id="cartItems"></div>
+  <div style="margin:18px 0 8px;">
+    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--earth);margin-bottom:10px;">Choose Delivery</div>
+    <div class="del-pick sel" onclick="selDelivery(this,'FARM_PICKUP',0)">
+      <div class="del-pick-row"><span style="font-size:22px;">🚜</span><div><div style="font-weight:700;font-size:14px;color:var(--earth);">Farm Pickup</div><div style="font-size:12px;color:var(--gray);">Collect from farm gate – same day</div></div><span class="del-pick-fee">FREE</span></div>
+    </div>
+    <div class="del-pick" onclick="selDelivery(this,'LOCAL_DELIVERY',50)">
+      <div class="del-pick-row"><span style="font-size:22px;">🛵</span><div><div style="font-weight:700;font-size:14px;color:var(--earth);">Local Delivery</div><div style="font-size:12px;color:var(--gray);">Within 20 km · 1–2 hours</div></div><span class="del-pick-fee">₹50</span></div>
+    </div>
+    <div class="del-pick" onclick="selDelivery(this,'COURIER',120)">
+      <div class="del-pick-row"><span style="font-size:22px;">🚚</span><div><div style="font-weight:700;font-size:14px;color:var(--earth);">Courier (Delhivery)</div><div style="font-size:12px;color:var(--gray);">2–3 days · wider reach</div></div><span class="del-pick-fee">₹120</span></div>
+    </div>
+    <div class="del-pick" onclick="selDelivery(this,'SUBSCRIPTION',30)">
+      <div class="del-pick-row"><span style="font-size:22px;">📅</span><div><div style="font-weight:700;font-size:14px;color:var(--earth);">Weekly Subscription</div><div style="font-size:12px;color:var(--gray);">Regular delivery box · save 15%</div></div><span class="del-pick-fee">₹30</span></div>
+    </div>
+  </div>
+  <div class="cart-totals">
+    <div class="tot-row"><span>Subtotal</span><span id="cartSub">₹0</span></div>
+    <div class="tot-row"><span>Delivery</span><span id="cartDel">FREE</span></div>
+    <div class="tot-row"><span style="color:var(--leaf);">✅ No middleman markup</span><span style="color:var(--leaf);">₹0</span></div>
+    <div class="tot-grand"><span>Total</span><span id="cartTot">₹0</span></div>
+    <button class="btn btn-primary btn-full btn-lg" id="btnPlaceOrder" onclick="placeOrder()">Place Order →</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="../js/app.js"></script>
+<script>
+  if (!Auth.requireBuyer()) throw '';
+
+  const bid = Auth.userId();
+  let allProducts = [];
+  let cart = {};         // { productId: qty }
+  let deliveryMethod = 'FARM_PICKUP';
+  let deliveryFee    = 0;
+  let currentCat     = 'all';
+
+  const EMOJI = {Vegetables:'🥦',Fruits:'🍎',Grains:'🌾',Dairy:'🥛',Spices:'🌶️',Pulses:'🫘'};
+
+  // ── Init ──────────────────────────────────────────────────
+  window.addEventListener('load', async () => {
+    renderUserChip();
+    document.getElementById('profName').value  = Auth.name();
+    document.getElementById('profEmail').value = Auth.email();
+    await loadProducts();
+  });
+
+  // ── Navigation ─────────────────────────────────────────────
+  function nav(el, sec) {
+    document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
+    if (el) el.classList.add('active');
+    ['shop','orders','profile'].forEach(s =>
+      document.getElementById('sec-' + s).style.display = s === sec ? 'block' : 'none');
+    if (sec === 'orders') loadOrders();
+  }
+
+  // ── Products ───────────────────────────────────────────────
+  async function loadProducts() {
+    try {
+      const res = await API.browseProducts({});
+      allProducts = res.data || [];
+      renderProducts(allProducts);
+    } catch(e) {
+      document.getElementById('productGrid').innerHTML =
+        `<div style="grid-column:1/-1;text-align:center;color:var(--red);padding:40px;">${e.message}</div>`;
+    }
+  }
+
+  function filterCat(cat, el) {
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    currentCat = cat;
+    filterProducts();
+  }
+
+  function filterProducts() {
+    let list = [...allProducts];
+    const q   = document.getElementById('searchInput').value.toLowerCase();
+    const srt = document.getElementById('sortSelect').value;
+    if (currentCat === 'organic') list = list.filter(p => p.isOrganic);
+    else if (currentCat !== 'all') list = list.filter(p => p.category === currentCat);
+    if (q) list = list.filter(p => p.name.toLowerCase().includes(q) || (p.description||'').toLowerCase().includes(q));
+    if (srt === 'price-asc')  list.sort((a,b) => a.price - b.price);
+    if (srt === 'price-desc') list.sort((a,b) => b.price - a.price);
+    if (srt === 'organic')    list.sort((a,b) => (b.isOrganic?1:0) - (a.isOrganic?1:0));
+    renderProducts(list);
+  }
+
+  function renderProducts(list) {
+    const grid = document.getElementById('productGrid');
+    if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--gray);padding:40px;">No products found.</div>'; return; }
+    grid.innerHTML = list.map(p => `
+      <div class="prod-card">
+        <div class="prod-thumb">
+          ${EMOJI[p.category] || '🌿'}
+          ${p.isOrganic ? '<span class="prod-organic-badge">ORGANIC</span>' : ''}
+          <span class="prod-direct-badge">👨‍🌾 Direct</span>
+        </div>
+        <div class="prod-body">
+          <div class="prod-name">${p.name}</div>
+          <div class="prod-farmer">👨‍🌾 ${p.farmer?.firstName} ${p.farmer?.lastName}</div>
+          <div class="rating-row">★★★★☆ <span style="color:var(--gray);">4.7</span></div>
+          <div class="prod-price">${fmt(p.price)}</div>
+          <div class="prod-unit">${p.unit}</div>
+          <div class="prod-footer">
+            <span class="prod-stock">📦 ${p.stockQuantity} left</span>
+            <button class="btn-add-cart" onclick="addToCart(${p.id},'${p.name}',${p.price},${p.farmer?.id})">
+              🛒 Add
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ── Cart ───────────────────────────────────────────────────
+  function addToCart(pid, name, price, farmerId) {
+    cart[pid] = { qty: (cart[pid]?.qty || 0) + 1, name, price, farmerId };
+    updateCart();
+    toast(`✅ ${name} added to cart!`);
+  }
+
+  function changeQty(pid, delta) {
+    if (!cart[pid]) return;
+    cart[pid].qty = Math.max(0, cart[pid].qty + delta);
+    if (!cart[pid].qty) delete cart[pid];
+    updateCart();
+  }
+
+  function updateCart() {
+    const keys  = Object.keys(cart);
+    const count = keys.reduce((s,k) => s + cart[k].qty, 0);
+    document.getElementById('cartCount').textContent = count;
+    renderCartItems();
+  }
+
+  function renderCartItems() {
+    const keys = Object.keys(cart);
+    const el = document.getElementById('cartItems');
+    if (!keys.length) {
+      el.innerHTML = '<div style="text-align:center;color:var(--gray);padding:32px;">Your cart is empty 🌾</div>';
+      document.getElementById('cartSub').textContent = '₹0';
+      document.getElementById('cartTot').textContent = '₹0';
+      document.getElementById('cartDel').textContent = deliveryFee > 0 ? fmt(deliveryFee) : 'FREE';
+      return;
+    }
+    let sub = 0;
+    el.innerHTML = keys.map(k => {
+      const item = cart[k]; const line = item.price * item.qty; sub += line;
+      const p = allProducts.find(p => p.id == k);
+      return `<div class="cart-item">
+        <div class="cart-item-emoji">${EMOJI[p?.category]||'🌿'}</div>
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-price">${fmt(item.price)} × ${item.qty} = ${fmt(line)}</div>
+        </div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty(${k},-1)">−</button>
+          <div class="qty-n">${item.qty}</div>
+          <button class="qty-btn" onclick="changeQty(${k},1)">+</button>
+        </div>
+      </div>`;
+    }).join('');
+    document.getElementById('cartSub').textContent = fmt(sub);
+    document.getElementById('cartDel').textContent = deliveryFee > 0 ? fmt(deliveryFee) : 'FREE';
+    document.getElementById('cartTot').textContent = fmt(sub + deliveryFee);
+  }
+
+  function toggleCart() {
+    document.getElementById('cartPanel').classList.toggle('open');
+    document.getElementById('cartOverlay').classList.toggle('open');
+    renderCartItems();
+  }
+
+  function selDelivery(el, method, fee) {
+    document.querySelectorAll('.del-pick').forEach(d => d.classList.remove('sel'));
+    el.classList.add('sel');
+    deliveryMethod = method; deliveryFee = fee;
+    renderCartItems();
+  }
+
+  async function placeOrder() {
+    const keys = Object.keys(cart);
+    if (!keys.length) { toast('🛒 Your cart is empty!'); return; }
+
+    // Group by farmer
+    const byFarmer = {};
+    keys.forEach(pid => {
+      const fid = cart[pid].farmerId;
+      if (!byFarmer[fid]) byFarmer[fid] = [];
+      byFarmer[fid].push({ productId: parseInt(pid), quantity: cart[pid].qty });
+    });
+
+    setLoading('btnPlaceOrder', true);
+    try {
+      for (const [farmerId, items] of Object.entries(byFarmer)) {
+        await API.placeOrder(bid, {
+          farmerId: parseInt(farmerId),
+          items,
+          deliveryMethod,
+          deliveryAddress: '',
+        });
+      }
+      toast('🎉 Order placed! Farmer has been notified.');
+      cart = {};
+      updateCart();
+      toggleCart();
+      nav(document.querySelector('[data-sec=orders]'), 'orders');
+    } catch(e) {
+      toast('❌ ' + (e.message || 'Failed to place order'));
+    } finally { setLoading('btnPlaceOrder', false, 'Place Order →'); }
+  }
+
+  // ── Orders ─────────────────────────────────────────────────
+  async function loadOrders() {
+    try {
+      const res = await API.buyerOrders(bid);
+      const orders = res.data || [];
+      document.getElementById('ord-total').textContent   = orders.length;
+      document.getElementById('ord-transit').textContent = orders.filter(o=>['CONFIRMED','DISPATCHED'].includes(o.status)).length;
+      document.getElementById('ord-done').textContent    = orders.filter(o=>o.status==='DELIVERED').length;
+      document.getElementById('ord-spent').textContent   = fmt(orders.reduce((s,o)=>s + Number(o.totalAmount),0));
+      const el = document.getElementById('orderCards');
+      if (!orders.length) { el.innerHTML = '<div style="text-align:center;color:var(--gray);padding:40px;">No orders yet — start shopping!</div>'; return; }
+      el.innerHTML = orders.map(o => `
+        <div class="order-card">
+          <div class="order-card-hdr">
+            <div>
+              <div style="font-family:monospace;font-size:12px;color:var(--gray);">${o.orderNumber}</div>
+              <div style="font-size:12px;color:#bbb;margin-top:2px;">${fmtDate(o.createdAt)}</div>
+            </div>
+            <span class="badge status-${o.status}">${o.status}</span>
+          </div>
+          <div class="order-items-chips">${(o.items||[]).map(i=>`<span class="order-chip">${i.productName} × ${i.quantity}</span>`).join('')}</div>
+          <div class="order-card-ftr">
+            <span style="font-size:13px;color:var(--gray);">${(o.deliveryMethod||'').replace(/_/g,' ')}</span>
+            <span style="font-size:17px;font-weight:700;color:var(--leaf);">${fmt(o.totalAmount)}</span>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) { console.error(e); }
+  }
+</script>
+</body>
+</html>

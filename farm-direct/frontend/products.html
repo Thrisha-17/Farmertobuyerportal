@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Marketplace — FarmDirect</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="products">
+<div id="navbar"></div>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <h1>The marketplace</h1>
+    <p>Fresh produce, listed by the farmers themselves. Pick what you love, and order directly.</p>
+  </div>
+</header>
+
+<div class="toolbar">
+  <input type="search" id="search" class="input" placeholder="Search for tomatoes, mango, ghee…" />
+  <select id="category" class="select">
+    <option value="">All categories</option>
+    <option>Vegetables</option>
+    <option>Fruits</option>
+    <option>Grains</option>
+    <option>Dairy</option>
+    <option>Spices</option>
+    <option>Other</option>
+  </select>
+  <button class="btn btn-primary" id="searchBtn">Filter</button>
+</div>
+
+<main class="container">
+  <div id="grid" class="products-grid">
+    <div class="empty"><h3>Loading fresh produce…</h3></div>
+  </div>
+</main>
+
+<div id="footer"></div>
+<script src="js/api.js"></script>
+<script>
+async function load() {
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '<div class="empty"><h3>Loading…</h3></div>';
+  try {
+    const items = await Api.listProducts({
+      category: document.getElementById('category').value,
+      search:   document.getElementById('search').value.trim(),
+    });
+    if (!items.length) {
+      grid.innerHTML = '<div class="empty"><h3>No produce found</h3><p>Try clearing your filters or searching for something else.</p></div>';
+      return;
+    }
+    grid.innerHTML = items.map(p => `
+      <a class="product-card" href="product-detail.html?id=${p.id}">
+        <div class="product-img" style="background-image:url('${escapeHtml(p.imageUrl || '')}')">
+          <span class="product-cat">${escapeHtml(p.category)}</span>
+        </div>
+        <div class="product-body">
+          <h3>${escapeHtml(p.name)}</h3>
+          <div class="product-farmer">◐ ${escapeHtml(p.farmerName || '')} · ${escapeHtml(p.farmerLocation || '')}</div>
+          <div class="product-bottom">
+            <div class="product-price">${fmtMoney(p.pricePerUnit)} <small>/ ${escapeHtml(p.unit)}</small></div>
+            <span class="btn btn-outline btn-sm">View</span>
+          </div>
+        </div>
+      </a>
+    `).join('');
+  } catch (err) {
+    grid.innerHTML = `<div class="empty"><h3>Could not load products</h3><p>${escapeHtml(err.message)}</p></div>`;
+  }
+}
+
+document.getElementById('searchBtn').addEventListener('click', load);
+document.getElementById('search').addEventListener('keydown', (e) => { if (e.key === 'Enter') load(); });
+document.getElementById('category').addEventListener('change', load);
+
+load();
+
+const params = new URLSearchParams(location.search);
+if (params.get('category')) {
+  document.getElementById('category').value = params.get('category');
+  load();
+}
+</script>
+</body>
+</html>

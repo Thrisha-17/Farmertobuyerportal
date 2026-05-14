@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Create account — FarmDirect</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="register">
+<div id="navbar"></div>
+
+<div class="auth-wrap">
+  <aside class="auth-side">
+    <div>
+      <div class="brand" style="color:#fff;">
+        <span class="brand-mark">FD</span>
+        <span style="color:#fff;">FarmDirect</span>
+      </div>
+    </div>
+    <div>
+      <h2>Join the movement.</h2>
+      <p class="auth-quote" style="margin-top:14px;">
+        Built for farmers who deserve fair prices, and for buyers
+        who care about where their food comes from.
+      </p>
+    </div>
+    <div style="opacity:0.7; font-size:0.85rem;">© FarmDirect</div>
+  </aside>
+
+  <div class="auth-form-wrap">
+    <form class="auth-form" id="registerForm">
+      <h2>Create an account</h2>
+      <p class="sub">Pick your role and start in under a minute.</p>
+
+      <div class="role-toggle">
+        <label>
+          <input type="radio" name="role" value="FARMER" checked />
+          <span>I am a Farmer
+            <span class="role-desc">Sell my harvest directly</span>
+          </span>
+        </label>
+        <label>
+          <input type="radio" name="role" value="BUYER" />
+          <span>I am a Buyer
+            <span class="role-desc">Buy fresh produce</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="form-group">
+        <label for="name">Full name</label>
+        <input type="text" id="name" class="input" required />
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" class="input" required />
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone</label>
+          <input type="text" id="phone" class="input" required />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="location">Location (City, State)</label>
+        <input type="text" id="location" class="input" placeholder="e.g. Nashik, Maharashtra" required />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="input" required minlength="6" />
+      </div>
+
+      <div class="form-group">
+        <label for="bio">Tell us about yourself <span style="color:var(--muted); font-weight:400;">(optional)</span></label>
+        <textarea id="bio" class="textarea" placeholder="Share your story, your farm, what you grow…"></textarea>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Create account</button>
+
+      <div class="auth-foot">
+        Already have an account? <a href="login.html">Log in</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+  try {
+    const res = await Api.register({
+      name:     document.getElementById('name').value.trim(),
+      email:    document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+      phone:    document.getElementById('phone').value.trim(),
+      location: document.getElementById('location').value.trim(),
+      bio:      document.getElementById('bio').value.trim(),
+      role:     document.querySelector('input[name="role"]:checked').value,
+    });
+    Auth.set(res.token, { id: res.userId, name: res.name, email: res.email, role: res.role });
+    toast('Welcome to FarmDirect, ' + res.name.split(' ')[0] + '!');
+    setTimeout(() => {
+      location.href = res.role === 'FARMER' ? 'farmer-dashboard.html' : 'buyer-dashboard.html';
+    }, 700);
+  } catch (err) {
+    toast(err.message || 'Registration failed', 'error');
+    btn.disabled = false; btn.textContent = 'Create account';
+  }
+});
+</script>
+</body>
+</html>

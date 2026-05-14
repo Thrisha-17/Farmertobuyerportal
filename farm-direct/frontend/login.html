@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Log in — FarmDirect</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="login">
+<div id="navbar"></div>
+
+<div class="auth-wrap">
+  <aside class="auth-side">
+    <div>
+      <div class="brand" style="color:#fff;">
+        <span class="brand-mark">FD</span>
+        <span style="color:#fff;">FarmDirect</span>
+      </div>
+    </div>
+    <div>
+      <h2>Welcome back to the farm.</h2>
+      <p class="auth-quote" style="margin-top:14px;">
+        "I used to lose 40% of my income to middlemen. Now I sell to families
+        in Mumbai directly — and they know my name."
+      </p>
+      <p style="margin-top:12px; opacity:0.7;">— Ravi, organic farmer in Nashik</p>
+    </div>
+    <div style="opacity:0.7; font-size:0.85rem;">© FarmDirect</div>
+  </aside>
+
+  <div class="auth-form-wrap">
+    <form class="auth-form" id="loginForm">
+      <h2>Log in</h2>
+      <p class="sub">Welcome back. Sign in to keep growing.</p>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="input" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="input" required minlength="6" autocomplete="current-password" />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Log in</button>
+
+      <div class="auth-foot">
+        New here? <a href="register.html">Create an account</a>
+      </div>
+      <div class="auth-foot" style="font-size:0.8rem; opacity:0.7;">
+        Test accounts:<br>
+        <code>ravi@farmdirect.com</code> (farmer) · <code>arjun@farmdirect.com</code> (buyer)<br>
+        password: <code>password</code>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true; btn.textContent = 'Signing in…';
+  try {
+    const res = await Api.login({
+      email: document.getElementById('email').value.trim(),
+      password: document.getElementById('password').value,
+    });
+    Auth.set(res.token, { id: res.userId, name: res.name, email: res.email, role: res.role });
+    toast('Welcome back, ' + res.name + '!');
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
+    setTimeout(() => {
+      location.href = redirect ||
+        (res.role === 'FARMER' ? 'farmer-dashboard.html' : 'buyer-dashboard.html');
+    }, 600);
+  } catch (err) {
+    toast(err.message || 'Login failed', 'error');
+    btn.disabled = false; btn.textContent = 'Log in';
+  }
+});
+</script>
+</body>
+</html>

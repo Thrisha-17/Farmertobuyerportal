@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Farmer Dashboard — FarmDirect</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body data-page="dashboard">
+<div id="navbar"></div>
+
+<header class="page-header">
+  <div class="page-header-inner">
+    <h1>Welcome, <span id="hi">farmer</span>.</h1>
+    <p>List your harvest, fulfil orders, and grow your direct customer base.</p>
+  </div>
+</header>
+
+<main class="container">
+  <div class="dash-grid" id="kpis"></div>
+
+  <div class="dash-section">
+    <h2>Your products
+      <button class="btn btn-primary btn-sm" id="addBtn">＋ Add product</button>
+    </h2>
+    <div id="products" class="table-wrap"><div class="empty"><h3>Loading…</h3></div></div>
+  </div>
+
+  <div class="dash-section">
+    <h2>Incoming orders</h2>
+    <div id="orders" class="table-wrap"><div class="empty"><h3>Loading…</h3></div></div>
+  </div>
+</main>
+
+<!-- Product modal -->
+<div class="modal-overlay" id="prodModal">
+  <div class="modal">
+    <h2 id="prodModalTitle">Add product</h2>
+    <form id="prodForm">
+      <input type="hidden" id="pid" />
+      <div class="form-group">
+        <label>Name</label>
+        <input id="pname" class="input" required />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="pcategory" class="select" required>
+            <option>Vegetables</option>
+            <option>Fruits</option>
+            <option>Grains</option>
+            <option>Dairy</option>
+            <option>Spices</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <input id="punit" class="input" placeholder="kg, dozen, litre…" required />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Price per unit (₹)</label>
+          <input id="pprice" type="number" step="0.01" min="0.01" class="input" required />
+        </div>
+        <div class="form-group">
+          <label>Quantity available</label>
+          <input id="pqty" type="number" min="1" class="input" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Harvest date</label>
+        <input id="phdate" type="date" class="input" />
+      </div>
+      <div class="form-group">
+        <label>Image URL</label>
+        <input id="pimg" class="input" placeholder="https://…" />
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="pdesc" class="textarea" placeholder="Tell buyers what makes this special…"></textarea>
+      </div>
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn btn-ghost" id="closeProd">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveProd">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="footer"></div>
+<script src="js/api.js"></script>
+<script>
+if (!requireAuth('FARMER')) { /* redirect */ } else {
+  document.getElementById('hi').textContent = (Auth.user().name || 'farmer').split(' ')[0];
+  loadAll();
+}
+
+let myProducts = [];
+
+async function loadAll() {
+  try {
+    const [products, orders] = await Promise.all([Api.myProducts(), Api.farmerOrders()]);
+    myProducts = products;
+    renderKpis(products, orders);
+    renderProducts(products);
+    renderOrders(orders);
+  } catch (err) {
+    toast(err.message || 'Could not load dashboard', 'error');
+  }
+}
+
+function renderKpis(products, orders) {
+  const totalRevenue = orders.filter(o => o.status !== 'CANCELLED').reduce((s,o)=>s+Number(o.totalPrice||0), 0);
+  const pendingOrders = orders.filter(o => ['PENDING','CONFIRMED','SHIPPED'].includes(o.status)).length;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><small>Listed products</small><div class="v">${products.length}</div></div>
+    <div class="kpi"><small>Orders received</small><div class="v">${orders.length}</div></div>
+    <div class="kpi"><small>Active orders</small><div class="v">${pendingOrders}</div></div>
+    <div class="kpi"><small>Total revenue</small><div class="v">${fmtMoney(totalRevenue)}</div></div>
+  `;
+}
+
+function renderProducts(items) {
+  if (!items.length) {
+    document.getElementById('products').innerHTML =
+      `<div class="empty"><h3>No products yet</h3><p>Add your first harvest to start selling.</p></div>`;
+    return;
+  }
+  document.getElementById('products').innerHTML = `
+    <table>
+      <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Harvested</th><th></th></tr></thead>
+      <tbody>
+        ${items.map(p => `
+          <tr>
+            <td><strong>${escapeHtml(p.name)}</strong></td>
+            <td>${escapeHtml(p.category)}</td>
+            <td>${fmtMoney(p.pricePerUnit)} / ${escapeHtml(p.unit)}</td>
+            <td>${p.quantityAvailable} ${escapeHtml(p.unit)}</td>
+            <td>${fmtDate(p.harvestDate)}</td>
+            <td style="text-align:right;">
+              <button class="btn btn-ghost btn-sm" onclick="editProduct(${p.id})">Edit</button>
+              <button class="btn btn-ghost btn-sm" onclick="deleteProduct(${p.id})" style="color:var(--danger);">Delete</button>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderOrders(orders) {
+  if (!orders.length) {
+    document.getElementById('orders').innerHTML =
+      `<div class="empty"><h3>No orders yet</h3><p>Once a buyer orders, you'll see them here with their contact details.</p></div>`;
+    return;
+  }
+  document.getElementById('orders').innerHTML = `
+    <table>
+      <thead>
+        <tr><th>Product</th><th>Buyer</th><th>Contact</th><th>Address</th><th>Qty</th><th>Total</th><th>Status</th><th>Update</th></tr>
+      </thead>
+      <tbody>
+        ${orders.map(o => `
+          <tr>
+            <td><strong>${escapeHtml(o.productName)}</strong></td>
+            <td>${escapeHtml(o.buyerName)}</td>
+            <td>${escapeHtml(o.buyerPhone || '—')}</td>
+            <td style="max-width:200px;">${escapeHtml(o.deliveryAddress || '—')}</td>
+            <td>${o.quantity} ${escapeHtml(o.productUnit || '')}</td>
+            <td><strong>${fmtMoney(o.totalPrice)}</strong></td>
+            <td><span class="status-pill status-${o.status.toLowerCase()}">${o.status}</span></td>
+            <td>
+              <select class="select" style="padding:6px 10px; font-size:.85rem;" onchange="updateStatus(${o.id}, this.value)">
+                ${['PENDING','CONFIRMED','SHIPPED','DELIVERED','CANCELLED']
+                  .map(s => `<option value="${s}" ${s===o.status?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+window.editProduct = function(id) {
+  const p = myProducts.find(x => x.id === id);
+  if (!p) return;
+  document.getElementById('prodModalTitle').textContent = 'Edit product';
+  document.getElementById('pid').value = p.id;
+  document.getElementById('pname').value = p.name;
+  document.getElementById('pcategory').value = p.category;
+  document.getElementById('punit').value = p.unit;
+  document.getElementById('pprice').value = p.pricePerUnit;
+  document.getElementById('pqty').value = p.quantityAvailable;
+  document.getElementById('phdate').value = p.harvestDate || '';
+  document.getElementById('pimg').value = p.imageUrl || '';
+  document.getElementById('pdesc').value = p.description || '';
+  document.getElementById('prodModal').classList.add('show');
+};
+
+window.deleteProduct = async function(id) {
+  if (!confirm('Delete this product? This cannot be undone.')) return;
+  try {
+    await Api.deleteProduct(id);
+    toast('Product deleted');
+    loadAll();
+  } catch (err) { toast(err.message, 'error'); }
+};
+
+window.updateStatus = async function(id, status) {
+  try {
+    await Api.setOrderStatus(id, status);
+    toast('Order status updated');
+    loadAll();
+  } catch (err) { toast(err.message, 'error'); }
+};
+
+document.getElementById('addBtn').addEventListener('click', () => {
+  document.getElementById('prodModalTitle').textContent = 'Add product';
+  document.getElementById('prodForm').reset();
+  document.getElementById('pid').value = '';
+  document.getElementById('prodModal').classList.add('show');
+});
+
+document.getElementById('closeProd').addEventListener('click', () =>
+  document.getElementById('prodModal').classList.remove('show'));
+
+document.getElementById('prodForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = document.getElementById('pid').value;
+  const body = {
+    name: document.getElementById('pname').value.trim(),
+    category: document.getElementById('pcategory').value,
+    description: document.getElementById('pdesc').value.trim(),
+    pricePerUnit: Number(document.getElementById('pprice').value),
+    unit: document.getElementById('punit').value.trim(),
+    quantityAvailable: Number(document.getElementById('pqty').value),
+    harvestDate: document.getElementById('phdate').value || null,
+    imageUrl: document.getElementById('pimg').value.trim() || null,
+  };
+  const btn = document.getElementById('saveProd');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    if (id) await Api.updateProduct(id, body);
+    else    await Api.createProduct(body);
+    toast(id ? 'Product updated' : 'Product added');
+    document.getElementById('prodModal').classList.remove('show');
+    loadAll();
+  } catch (err) {
+    toast(err.message || 'Save failed', 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Save';
+  }
+});
+</script>
+</body>
+</html>
